@@ -1,0 +1,67 @@
+{
+  "name": "chat-adapter-linq",
+  "version": "0.1.0",
+  "description": "Vercel Chat SDK adapter for Linq (iMessage)",
+  "keywords": [
+    "chat-adapter",
+    "chat-sdk",
+    "imessage",
+    "linq",
+    "webhook"
+  ],
+  "homepage": "https://github.com/rayhanadev/chat-adapter-linq#readme",
+  "bugs": {
+    "url": "https://github.com/rayhanadev/chat-adapter-linq/issues"
+  },
+  "license": "MIT",
+  "author": "Rayhan Noufal Arayilakath",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rayhanadev/chat-adapter-linq.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "bun run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --type-aware",
+    "format": "oxfmt",
+    "version": "changeset version",
+    "release": "tsc && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.31.0",
+    "@chat-adapter/shared": "^4.26.0",
+    "@chat-adapter/state-memory": "^4.26.0",
+    "@types/bun": "latest",
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^25.6.0",
+    "chat": "^4.26.0",
+    "oxclippy": "^0.2.0",
+    "oxfmt": "^0.45.0",
+    "oxlint": "^1.60.0",
+    "oxlint-tsgolint": "^0.21.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.4"
+  },
+  "peerDependencies": {
+    "@chat-adapter/shared": "^4.0.0",
+    "chat": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
