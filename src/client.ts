@@ -73,7 +73,13 @@ export class LinqClient {
 
   async sendMessage(
     chatId: string,
-    body: { message: { parts: LinqMessagePart[]; effect?: LinqMessageEffect } },
+    body: {
+      message: {
+        parts: LinqMessagePart[];
+        effect?: LinqMessageEffect;
+        reply_to?: { message_id: string; part_index?: number };
+      };
+    },
   ): Promise<LinqSendMessageResponse> {
     return this.request<LinqSendMessageResponse>(
       "POST",
