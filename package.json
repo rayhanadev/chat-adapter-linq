@@ -1,6 +1,6 @@
 {
   "name": "chat-adapter-linq",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Vercel Chat SDK adapter for Linq (iMessage)",
   "keywords": [
     "chat-adapter",
@@ -63,5 +63,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
