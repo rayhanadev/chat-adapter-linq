@@ -174,6 +174,47 @@ export class LinqAdapter implements Adapter<LinqThreadId, unknown> {
     };
   }
 
+  /**
+   * Post a message as a threaded reply to a prior message in the same chat.
+   *
+   * Produces a native iMessage swipe-reply bubble pointing at
+   * `parentMessageId`. Requires a real (non-pending) thread — the parent must
+   * already exist.
+   *
+   * @param threadId - The thread to post in
+   * @param parentMessageId - UUID of the message being replied to
+   * @param message - The reply body (same shape accepted by {@link postMessage})
+   * @param options - Optional `partIndex` when the parent has multiple parts
+   *   (defaults to `0`, matching Linq's default)
+   */
+  async postReply(
+    threadId: string,
+    parentMessageId: string,
+    message: AdapterPostableMessage,
+    options?: { partIndex?: number },
+  ): Promise<RawMessage<unknown>> {
+    const decoded = decodeThreadId(threadId);
+    if (decoded.kind === "pending") {
+      throw new ValidationError(
+        ADAPTER_NAME,
+        "postReply requires an existing chat — cannot reply in a pending thread.",
+      );
+    }
+    const parts = await buildLinqMessageParts(message, this.client);
+    const reply_to: { message_id: string; part_index?: number } = {
+      message_id: parentMessageId,
+    };
+    if (options?.partIndex !== undefined) reply_to.part_index = options.partIndex;
+    const sent = await this.client.sendMessage(decoded.chatId, {
+      message: { parts, reply_to },
+    });
+    return {
+      id: sent.message.id,
+      raw: sent,
+      threadId,
+    };
+  }
+
   async editMessage(
     threadId: string,
     messageId: string,

@@ -176,6 +176,61 @@ describe("LinqAdapter postMessage", () => {
   });
 });
 
+describe("LinqAdapter postReply", () => {
+  it("nests reply_to under message when threading a reply", async () => {
+    const fetchImpl = makeFetch(({ url, method, body }) => {
+      expect(url).toContain("/v3/chats/chat-1/messages");
+      expect(method).toBe("POST");
+      expect(body).toEqual({
+        message: {
+          parts: [{ type: "text", value: "Thanks!" }],
+          reply_to: { message_id: "parent-msg" },
+        },
+      });
+      return jsonResponse({ chat_id: "chat-1", message: { id: "reply-1", parts: [] } }, 202);
+    });
+    const adapter = buildAdapter(fetchImpl);
+    const result = await adapter.postReply(
+      encodeThreadId({ kind: "chat", from: FROM, chatId: "chat-1", isGroup: false }),
+      "parent-msg",
+      "Thanks!",
+    );
+    expect(result.id).toBe("reply-1");
+  });
+
+  it("includes part_index when provided", async () => {
+    const fetchImpl = makeFetch(({ body }) => {
+      expect(body).toEqual({
+        message: {
+          parts: [{ type: "text", value: "yes" }],
+          reply_to: { message_id: "parent-msg", part_index: 2 },
+        },
+      });
+      return jsonResponse({ chat_id: "chat-1", message: { id: "reply-1", parts: [] } }, 202);
+    });
+    const adapter = buildAdapter(fetchImpl);
+    await adapter.postReply(
+      encodeThreadId({ kind: "chat", from: FROM, chatId: "chat-1", isGroup: false }),
+      "parent-msg",
+      "yes",
+      { partIndex: 2 },
+    );
+  });
+
+  it("rejects replying in a pending thread (no parent exists yet)", async () => {
+    const fetchImpl = makeFetch(() => jsonResponse({}, 500));
+    const adapter = buildAdapter(fetchImpl);
+    await expect(
+      adapter.postReply(
+        encodeThreadId({ kind: "pending", from: FROM, recipient: "+15551234567" }),
+        "parent-msg",
+        "hi",
+      ),
+    ).rejects.toThrow(/postReply/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
 describe("LinqAdapter editMessage / deleteMessage", () => {
   it("edits via PATCH /v3/messages/{id}", async () => {
     const fetchImpl = makeFetch(({ url, method, body }) => {
