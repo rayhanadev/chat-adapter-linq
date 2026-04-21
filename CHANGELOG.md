@@ -1,5 +1,11 @@
 # chat-adapter-linq
 
+## 0.3.0
+
+### Minor Changes
+
+- feat(adapter): add markRead to surface iMessage 'Read' indicator
+
 ## 0.2.0
 
 ### Minor Changes
