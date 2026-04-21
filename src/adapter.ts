@@ -330,6 +330,20 @@ export class LinqAdapter implements Adapter<LinqThreadId, unknown> {
     }
   }
 
+  /**
+   * Mark all messages in a chat as read.
+   *
+   * Produces the native iMessage "Read" indicator on the sender's side for the
+   * most recent message. No-op for pending threads (nothing to mark yet).
+   *
+   * @param threadId - The thread whose messages should be marked read
+   */
+  async markRead(threadId: string): Promise<void> {
+    const decoded = decodeThreadId(threadId);
+    if (decoded.kind === "pending") return;
+    await this.client.markChatAsRead(decoded.chatId);
+  }
+
   renderFormatted(content: FormattedContent): string {
     return this.converter.fromAst(content);
   }

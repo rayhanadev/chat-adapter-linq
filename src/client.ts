@@ -119,6 +119,12 @@ export class LinqClient {
     });
   }
 
+  async markChatAsRead(chatId: string): Promise<void> {
+    await this.request<void>("POST", `/v3/chats/${encodeURIComponent(chatId)}/read`, {
+      acceptStatuses: [200, 204],
+    });
+  }
+
   async startTyping(chatId: string): Promise<void> {
     await this.request<void>("POST", `/v3/chats/${encodeURIComponent(chatId)}/typing`, {
       acceptStatuses: [200, 204],
