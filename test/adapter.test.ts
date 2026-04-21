@@ -303,6 +303,28 @@ describe("LinqAdapter startTyping", () => {
   });
 });
 
+describe("LinqAdapter markRead", () => {
+  it("POSTs to /v3/chats/{id}/read for an existing chat", async () => {
+    const fetchImpl = makeFetch(({ url, method }) => {
+      expect(method).toBe("POST");
+      expect(url).toContain("/v3/chats/chat-1/read");
+      return new Response(null, { status: 204 });
+    });
+    await buildAdapter(fetchImpl).markRead(
+      encodeThreadId({ kind: "chat", from: FROM, chatId: "chat-1", isGroup: false }),
+    );
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("is a no-op for pending threads", async () => {
+    const fetchImpl = vi.fn();
+    await buildAdapter(fetchImpl as unknown as typeof fetch).markRead(
+      encodeThreadId({ kind: "pending", from: FROM, recipient: "+1" }),
+    );
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
 describe("LinqAdapter openDM", () => {
   it("reuses an existing 1:1 chat", async () => {
     const fetchImpl = makeFetch(() =>
