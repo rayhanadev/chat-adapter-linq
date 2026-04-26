@@ -95,7 +95,12 @@ export type LinqMessageEffect = { type: "screen"; name: string } | { type: "bubb
 
 export interface LinqMessage {
   id: string;
-  parts: LinqMessagePart[];
+  /**
+   * Message body parts. Linq returns `null` for tombstones and system
+   * events (deleted messages, participant join/leave, etc.), so consumers
+   * must guard against a non-array value.
+   */
+  parts: LinqMessagePart[] | null;
   sent_at: string;
   delivered_at: string | null;
   read_at: string | null;

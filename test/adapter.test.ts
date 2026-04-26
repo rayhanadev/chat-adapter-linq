@@ -5,6 +5,8 @@ import sent from "./fixtures/message-sent.json" with { type: "json" };
 import reactionAdded from "./fixtures/reaction-added.json" with { type: "json" };
 import { LinqAdapter, createLinqAdapter } from "../src/adapter.js";
 import { encodeThreadId } from "../src/ids.js";
+import { isLinqTombstone } from "../src/parse-message.js";
+import type { LinqMessage } from "../src/types.js";
 
 const FROM = "+12025551234";
 const SECRET = "linq-test-secret";
@@ -353,6 +355,128 @@ describe("LinqAdapter openDM", () => {
     expect(await buildAdapter(fetchImpl).openDM("+15551234567")).toBe(
       encodeThreadId({ kind: "pending", from: FROM, recipient: "+15551234567" }),
     );
+  });
+});
+
+describe("LinqAdapter fetchMessages", () => {
+  it("does not crash on tombstone messages with null parts", async () => {
+    const fetchImpl = makeFetch(() =>
+      jsonResponse({
+        messages: [
+          {
+            id: "msg-real",
+            parts: [{ type: "text", value: "hello" }],
+            sent_at: "2026-01-01T00:00:00Z",
+            delivered_at: null,
+            read_at: null,
+            service: "iMessage",
+          },
+          {
+            // Linq returns `parts: null` for deleted/system messages even
+            // though the declared type is non-nullable.
+            id: "msg-tombstone",
+            parts: null,
+            sent_at: "2026-01-01T00:00:01Z",
+            delivered_at: null,
+            read_at: null,
+            service: "iMessage",
+          },
+        ],
+        next_cursor: null,
+      }),
+    );
+
+    const adapter = buildAdapter(fetchImpl);
+    const threadId = encodeThreadId({
+      kind: "chat",
+      from: FROM,
+      chatId: "chat-1",
+      isGroup: false,
+    });
+    const result = await adapter.fetchMessages(threadId);
+    expect(result.messages).toHaveLength(2);
+    expect(result.messages[0]?.text).toBe("hello");
+    expect(result.messages[1]?.text).toBe("");
+    // Tombstones survive pagination and are detectable via raw.
+    expect(isLinqTombstone(result.messages[0]?.raw as LinqMessage)).toBe(false);
+    expect(isLinqTombstone(result.messages[1]?.raw as LinqMessage)).toBe(true);
+  });
+
+  it("returns a page where every message is a tombstone without throwing", async () => {
+    const fetchImpl = makeFetch(() =>
+      jsonResponse({
+        messages: [
+          {
+            id: "tomb-1",
+            parts: null,
+            sent_at: "2026-01-01T00:00:00Z",
+            delivered_at: null,
+            read_at: null,
+            service: "iMessage",
+          },
+          {
+            id: "tomb-2",
+            parts: null,
+            sent_at: "2026-01-01T00:00:01Z",
+            delivered_at: null,
+            read_at: null,
+            service: "iMessage",
+          },
+        ],
+        next_cursor: "cursor-2",
+      }),
+    );
+
+    const adapter = buildAdapter(fetchImpl);
+    const threadId = encodeThreadId({
+      kind: "chat",
+      from: FROM,
+      chatId: "chat-1",
+      isGroup: false,
+    });
+    const result = await adapter.fetchMessages(threadId);
+    expect(result.messages).toHaveLength(2);
+    expect(result.messages.every((m) => m.text === "")).toBe(true);
+    expect(result.messages.every((m) => isLinqTombstone(m.raw as LinqMessage))).toBe(true);
+    expect(result.nextCursor).toBe("cursor-2");
+  });
+
+  it("preserves message order when a tombstone is first in the page", async () => {
+    const fetchImpl = makeFetch(() =>
+      jsonResponse({
+        messages: [
+          {
+            id: "tomb-leading",
+            parts: null,
+            sent_at: "2026-01-01T00:00:00Z",
+            delivered_at: null,
+            read_at: null,
+            service: "iMessage",
+          },
+          {
+            id: "msg-real",
+            parts: [{ type: "text", value: "after tombstone" }],
+            sent_at: "2026-01-01T00:00:01Z",
+            delivered_at: null,
+            read_at: null,
+            service: "iMessage",
+          },
+        ],
+        next_cursor: null,
+      }),
+    );
+
+    const adapter = buildAdapter(fetchImpl);
+    const threadId = encodeThreadId({
+      kind: "chat",
+      from: FROM,
+      chatId: "chat-1",
+      isGroup: false,
+    });
+    const result = await adapter.fetchMessages(threadId);
+    expect(result.messages.map((m) => m.id)).toEqual(["tomb-leading", "msg-real"]);
+    expect(result.messages[0]?.text).toBe("");
+    expect(result.messages[1]?.text).toBe("after tombstone");
   });
 });
 

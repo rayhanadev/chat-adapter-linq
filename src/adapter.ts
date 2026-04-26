@@ -19,7 +19,12 @@ import type {
 import { LinqClient } from "./client.js";
 import { LinqFormatConverter } from "./format-converter.js";
 import { channelIdFromThreadId, decodeThreadId, encodeThreadId, type LinqThreadId } from "./ids.js";
-import { handleToAuthor, parseEditedMessageEvent, parseMessageEvent } from "./parse-message.js";
+import {
+  handleToAuthor,
+  parseEditedMessageEvent,
+  parseMessageEvent,
+  partsToText,
+} from "./parse-message.js";
 import { buildLinqMessageParts } from "./post-message.js";
 import { emojiToReaction, reactionToEmoji } from "./reactions.js";
 import {
@@ -262,14 +267,7 @@ export class LinqAdapter implements Adapter<LinqThreadId, unknown> {
       const data: MessageData<unknown> = {
         id: m.id,
         threadId,
-        text: m.parts
-          .filter(
-            (p): p is { type: "text"; value: string } =>
-              p.type === "text" && typeof (p as { value?: unknown }).value === "string",
-          )
-          .map((p) => p.value)
-          .join("\n")
-          .trim(),
+        text: partsToText(m.parts),
         formatted: emptyFormatted(),
         raw: m,
         author: stubAuthor(),
