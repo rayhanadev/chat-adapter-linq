@@ -5,6 +5,7 @@ import { LinqFormatConverter } from "./format-converter.js";
 import { encodeThreadId } from "./ids.js";
 import type {
   LinqHandle,
+  LinqMessage,
   LinqMessageEditedEventDataV2,
   LinqMessageEventDataV2,
   LinqMessagePart,
@@ -91,10 +92,19 @@ export function handleToAuthor(handle: LinqHandle, isMe: boolean): Author {
   };
 }
 
+/**
+ * True when a Linq message is a tombstone — a deleted message or a system
+ * event (participant join/leave, name change, etc.). Linq signals these by
+ * returning `parts: null`; the adapter preserves the row so pagination
+ * stays consistent, and consumers can use this to decide how to render
+ * (skip, show "[deleted]", etc.).
+ */
+export function isLinqTombstone(message: Pick<LinqMessage, "parts">): boolean {
+  return !Array.isArray(message.parts);
+}
+
 export function partsToText(parts: LinqMessagePart[] | null | undefined): string {
-  // Linq's API returns `parts: null` for tombstones / system events
-  // (deleted messages, participant join/leave, etc.) even though the
-  // declared type is non-nullable. Treat as empty so callers don't crash.
+  // `parts` may be null on tombstones / system events — see LinqMessage.parts.
   if (!Array.isArray(parts)) return "";
   return parts
     .filter((p): p is LinqMessagePart & { type: "text"; value: string } =>

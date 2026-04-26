@@ -1,6 +1,7 @@
 // chat-adapter-linq
 
 export { LinqAdapter, createLinqAdapter } from "./adapter.js";
+export { isLinqTombstone } from "./parse-message.js";
 export type { LinqThreadId } from "./ids.js";
 export type {
   LinqAdapterConfig,

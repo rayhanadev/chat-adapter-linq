@@ -19,7 +19,12 @@ import type {
 import { LinqClient } from "./client.js";
 import { LinqFormatConverter } from "./format-converter.js";
 import { channelIdFromThreadId, decodeThreadId, encodeThreadId, type LinqThreadId } from "./ids.js";
-import { handleToAuthor, parseEditedMessageEvent, parseMessageEvent } from "./parse-message.js";
+import {
+  handleToAuthor,
+  parseEditedMessageEvent,
+  parseMessageEvent,
+  partsToText,
+} from "./parse-message.js";
 import { buildLinqMessageParts } from "./post-message.js";
 import { emojiToReaction, reactionToEmoji } from "./reactions.js";
 import {
@@ -259,24 +264,10 @@ export class LinqAdapter implements Adapter<LinqThreadId, unknown> {
     });
 
     const parsed = messages.map((m) => {
-      // Linq's API returns `parts: null` for tombstones / system events
-      // (deleted messages, participant join/leave, etc.) even though the
-      // declared type is non-nullable. Treat as empty so history fetches
-      // don't crash mid-pagination.
-      const safeParts = Array.isArray(m.parts) ? m.parts : [];
       const data: MessageData<unknown> = {
         id: m.id,
         threadId,
-        text: safeParts
-          .filter(
-            (p): p is { type: "text"; value: string } =>
-              Boolean(p) &&
-              p.type === "text" &&
-              typeof (p as { value?: unknown }).value === "string",
-          )
-          .map((p) => p.value)
-          .join("\n")
-          .trim(),
+        text: partsToText(m.parts),
         formatted: emptyFormatted(),
         raw: m,
         author: stubAuthor(),
