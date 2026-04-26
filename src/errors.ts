@@ -7,11 +7,11 @@ import {
   ResourceNotFoundError,
   ValidationError,
 } from "@chat-adapter/shared";
-import { ADAPTER_NAME, type LinqErrorBody } from "./types.js";
+import { ADAPTER_NAME } from "./types.js";
 
 export function mapHttpError(opts: {
   status: number;
-  body: LinqErrorBody | unknown;
+  body: unknown;
   retryAfter?: number;
 }): AdapterError {
   const { status, body, retryAfter } = opts;

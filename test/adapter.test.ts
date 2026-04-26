@@ -20,7 +20,7 @@ interface FetchCall {
 
 function makeFetch(handler: (call: FetchCall) => Response | Promise<Response>) {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : input.toString();
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     const headers: Record<string, string> = {};
     new Headers(init?.headers).forEach((v, k) => {
       headers[k.toLowerCase()] = v;
@@ -358,46 +358,39 @@ describe("LinqAdapter openDM", () => {
   });
 });
 
+function makeMessage(id: string, parts: unknown, sentAt: string) {
+  return {
+    id,
+    parts,
+    sent_at: sentAt,
+    delivered_at: null,
+    read_at: null,
+    service: "iMessage",
+  };
+}
+
+function chat1ThreadId() {
+  return encodeThreadId({ kind: "chat", from: FROM, chatId: "chat-1", isGroup: false });
+}
+
 describe("LinqAdapter fetchMessages", () => {
   it("does not crash on tombstone messages with null parts", async () => {
     const fetchImpl = makeFetch(() =>
       jsonResponse({
         messages: [
-          {
-            id: "msg-real",
-            parts: [{ type: "text", value: "hello" }],
-            sent_at: "2026-01-01T00:00:00Z",
-            delivered_at: null,
-            read_at: null,
-            service: "iMessage",
-          },
-          {
-            // Linq returns `parts: null` for deleted/system messages even
-            // though the declared type is non-nullable.
-            id: "msg-tombstone",
-            parts: null,
-            sent_at: "2026-01-01T00:00:01Z",
-            delivered_at: null,
-            read_at: null,
-            service: "iMessage",
-          },
+          makeMessage("msg-real", [{ type: "text", value: "hello" }], "2026-01-01T00:00:00Z"),
+          // Linq returns `parts: null` for deleted/system messages even
+          // though the declared type is non-nullable.
+          makeMessage("msg-tombstone", null, "2026-01-01T00:00:01Z"),
         ],
         next_cursor: null,
       }),
     );
 
-    const adapter = buildAdapter(fetchImpl);
-    const threadId = encodeThreadId({
-      kind: "chat",
-      from: FROM,
-      chatId: "chat-1",
-      isGroup: false,
-    });
-    const result = await adapter.fetchMessages(threadId);
+    const result = await buildAdapter(fetchImpl).fetchMessages(chat1ThreadId());
     expect(result.messages).toHaveLength(2);
     expect(result.messages[0]?.text).toBe("hello");
     expect(result.messages[1]?.text).toBe("");
-    // Tombstones survive pagination and are detectable via raw.
     expect(isLinqTombstone(result.messages[0]?.raw as LinqMessage)).toBe(false);
     expect(isLinqTombstone(result.messages[1]?.raw as LinqMessage)).toBe(true);
   });
@@ -406,35 +399,14 @@ describe("LinqAdapter fetchMessages", () => {
     const fetchImpl = makeFetch(() =>
       jsonResponse({
         messages: [
-          {
-            id: "tomb-1",
-            parts: null,
-            sent_at: "2026-01-01T00:00:00Z",
-            delivered_at: null,
-            read_at: null,
-            service: "iMessage",
-          },
-          {
-            id: "tomb-2",
-            parts: null,
-            sent_at: "2026-01-01T00:00:01Z",
-            delivered_at: null,
-            read_at: null,
-            service: "iMessage",
-          },
+          makeMessage("tomb-1", null, "2026-01-01T00:00:00Z"),
+          makeMessage("tomb-2", null, "2026-01-01T00:00:01Z"),
         ],
         next_cursor: "cursor-2",
       }),
     );
 
-    const adapter = buildAdapter(fetchImpl);
-    const threadId = encodeThreadId({
-      kind: "chat",
-      from: FROM,
-      chatId: "chat-1",
-      isGroup: false,
-    });
-    const result = await adapter.fetchMessages(threadId);
+    const result = await buildAdapter(fetchImpl).fetchMessages(chat1ThreadId());
     expect(result.messages).toHaveLength(2);
     expect(result.messages.every((m) => m.text === "")).toBe(true);
     expect(result.messages.every((m) => isLinqTombstone(m.raw as LinqMessage))).toBe(true);
@@ -445,35 +417,18 @@ describe("LinqAdapter fetchMessages", () => {
     const fetchImpl = makeFetch(() =>
       jsonResponse({
         messages: [
-          {
-            id: "tomb-leading",
-            parts: null,
-            sent_at: "2026-01-01T00:00:00Z",
-            delivered_at: null,
-            read_at: null,
-            service: "iMessage",
-          },
-          {
-            id: "msg-real",
-            parts: [{ type: "text", value: "after tombstone" }],
-            sent_at: "2026-01-01T00:00:01Z",
-            delivered_at: null,
-            read_at: null,
-            service: "iMessage",
-          },
+          makeMessage("tomb-leading", null, "2026-01-01T00:00:00Z"),
+          makeMessage(
+            "msg-real",
+            [{ type: "text", value: "after tombstone" }],
+            "2026-01-01T00:00:01Z",
+          ),
         ],
         next_cursor: null,
       }),
     );
 
-    const adapter = buildAdapter(fetchImpl);
-    const threadId = encodeThreadId({
-      kind: "chat",
-      from: FROM,
-      chatId: "chat-1",
-      isGroup: false,
-    });
-    const result = await adapter.fetchMessages(threadId);
+    const result = await buildAdapter(fetchImpl).fetchMessages(chat1ThreadId());
     expect(result.messages.map((m) => m.id)).toEqual(["tomb-leading", "msg-real"]);
     expect(result.messages[0]?.text).toBe("");
     expect(result.messages[1]?.text).toBe("after tombstone");

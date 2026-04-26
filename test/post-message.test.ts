@@ -40,7 +40,7 @@ describe("buildLinqMessageParts", () => {
 
   it("uploads attached files and appends media parts", async () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request) => {
-      const url = typeof input === "string" ? input : input.toString();
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       if (url.endsWith("/v3/attachments")) {
         return jsonResponse({
           attachment_id: "att-1",

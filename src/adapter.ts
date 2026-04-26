@@ -32,7 +32,6 @@ import {
   type LinqAdapterConfig,
   type LinqMessageEditedEventDataV2,
   type LinqMessageEventDataV2,
-  type LinqParticipantEventData,
   type LinqReactionEventData,
   type LinqTypingEventData,
 } from "./types.js";
@@ -435,7 +434,7 @@ export class LinqAdapter implements Adapter<LinqThreadId, unknown> {
       case "chat.group_icon_update_failed":
       case "phone_number.status_updated": {
         this.logger.debug(`Linq event: ${event.event_type}`, {
-          data: event.data as LinqParticipantEventData | unknown,
+          data: event.data,
         });
         return;
       }
