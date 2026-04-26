@@ -107,8 +107,9 @@ export function partsToText(parts: LinqMessagePart[] | null | undefined): string
   // `parts` may be null on tombstones / system events — see LinqMessage.parts.
   if (!Array.isArray(parts)) return "";
   return parts
-    .filter((p): p is LinqMessagePart & { type: "text"; value: string } =>
-      Boolean(p) && p.type === "text" && typeof (p as { value?: unknown }).value === "string",
+    .filter(
+      (p): p is LinqMessagePart & { type: "text"; value: string } =>
+        Boolean(p) && p.type === "text" && typeof (p as { value?: unknown }).value === "string",
     )
     .map((p) => p.value)
     .join("\n")

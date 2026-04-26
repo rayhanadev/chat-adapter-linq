@@ -38,7 +38,9 @@ describe("LinqClient", () => {
 
   it("serializes query params", async () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request) => {
-      const url = new URL(typeof input === "string" ? input : input.toString());
+      const url = new URL(
+        typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+      );
       expect(url.searchParams.get("from")).toBe("+1");
       expect(url.searchParams.get("limit")).toBe("5");
       return jsonResponse({ chats: [], next_cursor: null });

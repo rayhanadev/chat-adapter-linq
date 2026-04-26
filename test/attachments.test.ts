@@ -30,7 +30,7 @@ describe("uploadFile", () => {
   it("requests an upload URL, PUTs bytes, and returns a media part", async () => {
     let put: { url: string; method: string; body?: BodyInit | null } | null = null;
     const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input.toString();
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       if (url.endsWith("/v3/attachments")) {
         return jsonResponse({
           attachment_id: "att-1",
@@ -66,7 +66,7 @@ describe("uploadFile", () => {
   it("infers mime type from extension when not provided", async () => {
     let captured: { content_type?: string } | undefined;
     const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input.toString();
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       if (url.endsWith("/v3/attachments")) {
         captured = JSON.parse(init?.body as string) as { content_type?: string };
         return jsonResponse({
