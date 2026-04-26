@@ -356,6 +356,48 @@ describe("LinqAdapter openDM", () => {
   });
 });
 
+describe("LinqAdapter fetchMessages", () => {
+  it("does not crash on tombstone messages with null parts", async () => {
+    const fetchImpl = makeFetch(() =>
+      jsonResponse({
+        messages: [
+          {
+            id: "msg-real",
+            parts: [{ type: "text", value: "hello" }],
+            sent_at: "2026-01-01T00:00:00Z",
+            delivered_at: null,
+            read_at: null,
+            service: "iMessage",
+          },
+          {
+            // Linq returns `parts: null` for deleted/system messages even
+            // though the declared type is non-nullable.
+            id: "msg-tombstone",
+            parts: null,
+            sent_at: "2026-01-01T00:00:01Z",
+            delivered_at: null,
+            read_at: null,
+            service: "iMessage",
+          },
+        ],
+        next_cursor: null,
+      }),
+    );
+
+    const adapter = buildAdapter(fetchImpl);
+    const threadId = encodeThreadId({
+      kind: "chat",
+      from: FROM,
+      chatId: "chat-1",
+      isGroup: false,
+    });
+    const result = await adapter.fetchMessages(threadId);
+    expect(result.messages).toHaveLength(2);
+    expect(result.messages[0]?.text).toBe("hello");
+    expect(result.messages[1]?.text).toBe("");
+  });
+});
+
 describe("LinqAdapter handleWebhook", () => {
   it("rejects unsigned requests with 401", async () => {
     const adapter = buildAdapter(vi.fn());

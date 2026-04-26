@@ -259,13 +259,20 @@ export class LinqAdapter implements Adapter<LinqThreadId, unknown> {
     });
 
     const parsed = messages.map((m) => {
+      // Linq's API returns `parts: null` for tombstones / system events
+      // (deleted messages, participant join/leave, etc.) even though the
+      // declared type is non-nullable. Treat as empty so history fetches
+      // don't crash mid-pagination.
+      const safeParts = Array.isArray(m.parts) ? m.parts : [];
       const data: MessageData<unknown> = {
         id: m.id,
         threadId,
-        text: m.parts
+        text: safeParts
           .filter(
             (p): p is { type: "text"; value: string } =>
-              p.type === "text" && typeof (p as { value?: unknown }).value === "string",
+              Boolean(p) &&
+              p.type === "text" &&
+              typeof (p as { value?: unknown }).value === "string",
           )
           .map((p) => p.value)
           .join("\n")

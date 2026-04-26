@@ -45,4 +45,23 @@ describe("parseMessageEvent", () => {
       ]).map((a) => a.type),
     ).toEqual(["video", "audio", "file"]);
   });
+
+  it("partsToText/partsToAttachments tolerate null parts (tombstones)", () => {
+    // Linq returns `parts: null` for deleted messages and system events.
+    expect(partsToText(null as never)).toBe("");
+    expect(partsToText(undefined as never)).toBe("");
+    expect(partsToAttachments(null as never)).toEqual([]);
+    expect(partsToAttachments(undefined as never)).toEqual([]);
+  });
+
+  it("partsToText skips malformed text parts without a string value", () => {
+    expect(
+      partsToText([
+        { type: "text", value: "ok" },
+        // Defensive: malformed inbound payloads occasionally drop `value`.
+        { type: "text" } as never,
+        null as never,
+      ]),
+    ).toBe("ok");
+  });
 });

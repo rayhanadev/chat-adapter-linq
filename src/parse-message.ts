@@ -91,17 +91,25 @@ export function handleToAuthor(handle: LinqHandle, isMe: boolean): Author {
   };
 }
 
-export function partsToText(parts: LinqMessagePart[]): string {
+export function partsToText(parts: LinqMessagePart[] | null | undefined): string {
+  // Linq's API returns `parts: null` for tombstones / system events
+  // (deleted messages, participant join/leave, etc.) even though the
+  // declared type is non-nullable. Treat as empty so callers don't crash.
+  if (!Array.isArray(parts)) return "";
   return parts
-    .filter((p): p is LinqMessagePart & { type: "text"; value: string } => p.type === "text")
+    .filter((p): p is LinqMessagePart & { type: "text"; value: string } =>
+      Boolean(p) && p.type === "text" && typeof (p as { value?: unknown }).value === "string",
+    )
     .map((p) => p.value)
     .join("\n")
     .trim();
 }
 
-export function partsToAttachments(parts: LinqMessagePart[]): Attachment[] {
+export function partsToAttachments(parts: LinqMessagePart[] | null | undefined): Attachment[] {
   const attachments: Attachment[] = [];
+  if (!Array.isArray(parts)) return attachments;
   for (const part of parts) {
+    if (!part) continue;
     if (part.type === "media" || part.type === "voice_memo") {
       const mime = "mime_type" in part ? part.mime_type : undefined;
       const attachment: Attachment = {
